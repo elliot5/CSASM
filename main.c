@@ -26,21 +26,29 @@ char* open_file(const char* dir)
 
 void tokenize(char* str)
 {
-	printf("New Token: %s\r\n", str);
+	char* opcode = strtok_r(str, " ", &str);
+	if(opcode == NULL)
+	{
+		perror("Tokenize opcode fail");
+		exit(-1);
+	}
+	char* operands[2];
+        operands[0] = strtok_r(NULL, " ", &str);
+	operands[1] = strtok_r(NULL, " ", &str); //Find way for variable operands
+	printf("Opcode(%s), Operand(%s)\r\n", opcode, operand);
 }
 
 void tokenize_lines(char* str)
 {
 	char* tok_ptr = NULL;
-	tok_ptr = strtok(str, "\n");
+	tok_ptr = strtok_r(str, "\n", &str);
 	while(tok_ptr != NULL)
 	{
-		long length = strlen(tok_ptr);
+		long length = strlen(tok_ptr) + 1;
 		char* buffer = malloc(length);
-		snprintf(buffer, length, "%s\n", tok_ptr);
-		
+		snprintf(buffer, length, "%s", tok_ptr);
 		tokenize(buffer);
-		tok_ptr = strtok(NULL, "\n");
+		tok_ptr = strtok_r(NULL, "\n", &str);
 		free(buffer);
 	}
 }
