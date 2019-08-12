@@ -1,5 +1,7 @@
-PRINT HELLO
-PRINT 5
-MOV 5
-END
 
+
+set 10
+mov 0x2
+set 20
+ldr 0
+out
