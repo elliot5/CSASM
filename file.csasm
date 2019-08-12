@@ -1,7 +1,8 @@
-
-
-set 10
-mov 0x2
 set 20
-ldr 0
+out
+set 40
+out
+set 0x2
+out
+set 50
 out
