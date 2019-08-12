@@ -1,9 +1,13 @@
 
-#CSASM
+## CSASM
 
 CSASM (C Simple ASM) is a made-up interpreted instruction set (similar to the Little Man Computer instruction set).
 
-#SYNTAX
+# Syntax
+
+The following opcodes are available for use using the following format.
+
+`[opcode] [operand]` e.g `mov 0x2'
 
 | opcode | name | operand | description                        |
 |--------|------|---------|------------------------------------|
@@ -13,6 +17,6 @@ CSASM (C Simple ASM) is a made-up interpreted instruction set (similar to the Li
 | 0x3    | set  | long    | sets address to value              |
 | 0x4    | ldr  | address | moves address value to accumulator |
 
-#AUTHORS
+# Authors
 
 (2019), Elliot Bewey
