@@ -4,12 +4,51 @@
 #include "csasm.h"
 
 #define MEM_SIZE 255
+#define GENERIC_ERR -1
 
 long csasm_mem[MEM_SIZE];
 long csasm_acc = 0;
+unsigned long csasm_line = 0;
+linedarr_t csasm_labels;
+
+int cerr_print()
+{
+	fprintf(stderr, "[asm_err] ");
+	return 1;
+}
+
+int add_label(long line, char* label)
+{
+	csasm_labels.lined = realloc(csasm_labels.lined, sizeof(lined_t) * csasm_labels.length + 1);
+	lined_t ln_data = {
+		.label = label,
+		.line = line
+	};
+	csasm_labels.lined[csasm_labels.length] = ln_data;
+	csasm_labels.length += 1;
+	return 0;
+}
+
+int get_label(char* label)
+{
+	for(int i = 0; i < csasm_labels.length; i++)
+	{
+		if(strcmp(csasm_labels.lined[i].label, label) == 0)
+		{
+			return csasm_labels.lined[i].line;
+		}
+	}
+	return -1;
+}
 
 int csasm_add(tknd_t data)
 {
+	if(data.operand == NULL)
+	{
+		cerr_print();
+		fprintf(stderr, "ADD requires operand ADDR\n");
+		exit(GENERIC_ERR);
+	}
 	long addr = strtol(data.operand, NULL, 0);
 	csasm_acc += csasm_mem[addr];
 	return 0;
@@ -23,6 +62,12 @@ int csasm_out(tknd_t data)
 
 int csasm_mov(tknd_t data)
 {
+	if(data.operand == NULL)
+	{
+		cerr_print();
+		fprintf(stderr, "MOV requires operand ADDR\n");
+		exit(GENERIC_ERR);
+	}
 	long addr = strtol(data.operand, NULL, 0);
 	csasm_mem[addr] = csasm_acc;
 	return 0;
@@ -30,6 +75,12 @@ int csasm_mov(tknd_t data)
 
 int csasm_ldr(tknd_t data)
 {
+	if(data.operand == NULL)
+	{
+		cerr_print();
+		fprintf(stderr, "LDR requires operand ADDR\n");
+		exit(GENERIC_ERR);
+	}
 	long addr = strtol(data.operand, NULL, 0); // 0 = hex
 	csasm_acc = csasm_mem[addr];
 	return 0;
@@ -37,9 +88,45 @@ int csasm_ldr(tknd_t data)
 
 int csasm_set(tknd_t data)
 {
+	if(data.operand == NULL)
+	{
+		cerr_print();
+		fprintf(stderr, "SET requires operand VAL\n");
+		exit(GENERIC_ERR);
+	}
 	long val = strtol(data.operand, NULL, 10); // 10 for base ten
 	csasm_acc = val;
 	return 0;
+}
+
+int csasm_lbl(tknd_t data)
+{
+	
+}
+
+int csasm_jmp(tknd_t data)
+{
+	if(data.operand == NULL)
+	{
+		cerr_print();
+		fprintf(stderr, "JMP requires operand LABEL\n");
+		exit(GENERIC_ERR);
+	}
+	int ret = get_label(data.operand);
+	if(ret < 0)
+	{
+		cerr_print();
+		fprintf(stderr, "Failed to JMP to label %s (does it exist?)\n", data.operand);
+		exit(GENERIC_ERR);
+	}
+	csasm_line = ret;
+}
+
+int csasm_inp(tknd_t data)
+{
+	long val = 0;
+	scanf("%ld", &val);
+	csasm_acc = val;
 }
 
 const deftkn_t CSASM_TKNS[] = {
@@ -47,7 +134,10 @@ const deftkn_t CSASM_TKNS[] = {
 	{0x1, "out", csasm_out},
 	{0x2, "mov", csasm_mov},
 	{0x3, "set", csasm_set},
-	{0x4, "ldr", csasm_ldr}
+	{0x4, "ldr", csasm_ldr},
+	{0x5, "lbl", csasm_lbl},
+	{0x6, "jmp", csasm_jmp},
+	{0x7, "inp", csasm_inp}
 };
 
 const int TKNS_LEN = sizeof(CSASM_TKNS) / sizeof(CSASM_TKNS[0]);
@@ -137,8 +227,8 @@ tknarr_t tokenize_lines(char* str)
 	{
 		if(index >= buffered_length)
 		{
-			buffered_length *= 2;
-			tokens.tokens = realloc(&tokens, sizeof(tkn_t) * buffered_length);
+			buffered_length = buffered_length * 2;
+			tokens.tokens = realloc(tokens.tokens, sizeof(tkn_t) * buffered_length);
 			tokens.buffered_length = buffered_length;
 		}
 		long length = strlen(tok_ptr) + 1;
@@ -163,6 +253,37 @@ tknarr_t tokenize_lines(char* str)
 	return tokens;
 }
 
+int process_tokens(tknarr_t token_array)
+{
+	int lbl_opcode = str_opcode("lbl");
+	tkn_t* tokens = token_array.tokens;
+	size_t length = token_array.length;
+	
+	// Preprocessing
+	for(csasm_line = 0; csasm_line < length; csasm_line++)
+	{
+		tkn_t token = tokens[csasm_line];
+		if(token.opcode == lbl_opcode)
+		{
+			add_label(csasm_line, token.data.operand);
+		}
+	}
+	// Runtime
+	csasm_line = 0;
+	for(csasm_line = 0; csasm_line < length; csasm_line++)
+	{
+		tkn_t token = tokens[csasm_line];
+		CSASM_TKNS[token.opcode].def_func(token.data);
+	}
+	// Postprocessing
+	for(size_t i = 0; i < length; i++)
+	{
+		free(tokens[i].data.src);
+	}
+	free(tokens);
+	free(csasm_labels.lined);
+}
+
 int main(int argc, char** argv)
 {
 	if(argc < 2)
@@ -179,20 +300,7 @@ int main(int argc, char** argv)
 	}
 	
 	tknarr_t token_array = tokenize_lines(file_contents);
-	
-	tkn_t* tokens = token_array.tokens;
-	size_t length = token_array.length;
-
-	for(size_t i = 0; i < length; i++)
-	{
-		tkn_t token = tokens[i];
-		CSASM_TKNS[token.opcode].def_func(token.data);
-	}
-	for(size_t i = 0; i < length; i++)
-	{
-		free(tokens[i].data.src);
-	}
-	free(tokens);
+	process_tokens(token_array);
 	free(file_contents);
 	return 0;
 }

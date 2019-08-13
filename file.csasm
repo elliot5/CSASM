@@ -1,8 +1,9 @@
-set 20
+set 2
+mov 0x1
+lbl loop
+ldr 0x1
+add 0x1
+mov 0x1
 out
-set 40
-out
-set 0x2
-out
-set 50
-out
+inp
+jmp loop
