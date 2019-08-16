@@ -76,6 +76,6 @@ extern int str_opcode(const char* str);
 extern void print_token(const tkn_t token);
 extern tkn_t tokenize(char* str);
 extern tknarr_t tokenize_lines(char* str);
-extern int process_tokens(tknarr_t);
+extern int process_tokens(tknarr_t arr, csparams_t* csp);
 
 #endif

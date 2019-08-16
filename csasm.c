@@ -251,28 +251,27 @@ tknarr_t tokenize_lines(char* str)
 	return tokens;
 }
 
-int process_tokens(tknarr_t token_array)
+int process_tokens(tknarr_t token_array, csparams_t* params)
 {
 	int lbl_opcode = str_opcode("lbl");
 	tkn_t* tokens = token_array.tokens;
 	size_t length = token_array.length;
-	csparams_t params;
 
 	// Preprocessing
-	for(params.line = 0; params.line < length; params.line++)
+	for(params->line = 0; params->line < length; params->line++)
 	{
-		tkn_t token = tokens[params.line];
+		tkn_t token = tokens[params->line];
 		if(token.opcode == lbl_opcode)
 		{
-			add_label(params.line, token.data.operand);
+			add_label(params->line, token.data.operand);
 		}
 	}
 	// Runtime
-	params.line = 0;
-	for(params.line = 0; params.line < length; params.line++)
+	params->line = 0;
+	for(params->line = 0; params->line < length; params->line++)
 	{
-		tkn_t token = tokens[params.line];
-		CSASM_TKNS[token.opcode].def_func(token.data, &params);
+		tkn_t token = tokens[params->line];
+		CSASM_TKNS[token.opcode].def_func(token.data, params);
 	}
 	// Postprocessing
 	for(size_t i = 0; i < length; i++)
@@ -299,7 +298,8 @@ int main(int argc, char** argv)
 	}
 	
 	tknarr_t token_array = tokenize_lines(file_contents);
-	process_tokens(token_array);
+	csparams_t params;
+	process_tokens(token_array, &params);
 	free(file_contents);
 	return 0;
 }
