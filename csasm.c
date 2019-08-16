@@ -5,8 +5,6 @@
 
 #define GENERIC_ERR -1
 
-long csasm_mem[MEM_SIZE];
-long csasm_acc = 0;
 linedarr_t csasm_labels;
 
 int cerr_print()
