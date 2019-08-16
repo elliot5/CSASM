@@ -3,12 +3,10 @@
 #include <string.h>
 #include "csasm.h"
 
-#define MEM_SIZE 255
 #define GENERIC_ERR -1
 
 long csasm_mem[MEM_SIZE];
 long csasm_acc = 0;
-unsigned long csasm_line = 0;
 linedarr_t csasm_labels;
 
 int cerr_print()
@@ -41,7 +39,7 @@ int get_label(char* label)
 	return -1;
 }
 
-int csasm_add(tknd_t data)
+int csasm_add(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -50,17 +48,17 @@ int csasm_add(tknd_t data)
 		exit(GENERIC_ERR);
 	}
 	long addr = strtol(data.operand, NULL, 0);
-	csasm_acc += csasm_mem[addr];
+	params->acc += params->memory[addr];
 	return 0;
 }
 
-int csasm_out(tknd_t data)
+int csasm_out(tknd_t data, csparams_t* params)
 {
-	printf("[asm_out] %ld\n", csasm_acc);
+	printf("[asm_out] %ld\n", params->acc);
 	return 0;
 }
 
-int csasm_mov(tknd_t data)
+int csasm_mov(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -69,11 +67,11 @@ int csasm_mov(tknd_t data)
 		exit(GENERIC_ERR);
 	}
 	long addr = strtol(data.operand, NULL, 0);
-	csasm_mem[addr] = csasm_acc;
+	params->memory[addr] = params->acc;
 	return 0;
 }
 
-int csasm_ldr(tknd_t data)
+int csasm_ldr(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -82,11 +80,11 @@ int csasm_ldr(tknd_t data)
 		exit(GENERIC_ERR);
 	}
 	long addr = strtol(data.operand, NULL, 0); // 0 = hex
-	csasm_acc = csasm_mem[addr];
+	params->acc = params->memory[addr];
 	return 0;
 }
 
-int csasm_set(tknd_t data)
+int csasm_set(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -95,16 +93,16 @@ int csasm_set(tknd_t data)
 		exit(GENERIC_ERR);
 	}
 	long val = strtol(data.operand, NULL, 10); // 10 for base ten
-	csasm_acc = val;
+	params->acc= val;
 	return 0;
 }
 
-int csasm_lbl(tknd_t data)
+int csasm_lbl(tknd_t data, csparams_t* params)
 {
 	
 }
 
-int csasm_jmp(tknd_t data)
+int csasm_jmp(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -119,14 +117,14 @@ int csasm_jmp(tknd_t data)
 		fprintf(stderr, "Failed to JMP to label %s (does it exist?)\n", data.operand);
 		exit(GENERIC_ERR);
 	}
-	csasm_line = ret;
+	params->line = ret;
 }
 
-int csasm_inp(tknd_t data)
+int csasm_inp(tknd_t data, csparams_t* params)
 {
 	long val = 0;
 	scanf("%ld", &val);
-	csasm_acc = val;
+	params->acc = val;
 }
 
 const deftkn_t CSASM_TKNS[] = {
@@ -258,22 +256,23 @@ int process_tokens(tknarr_t token_array)
 	int lbl_opcode = str_opcode("lbl");
 	tkn_t* tokens = token_array.tokens;
 	size_t length = token_array.length;
-	
+	csparams_t params;
+
 	// Preprocessing
-	for(csasm_line = 0; csasm_line < length; csasm_line++)
+	for(params.line = 0; params.line < length; params.line++)
 	{
-		tkn_t token = tokens[csasm_line];
+		tkn_t token = tokens[params.line];
 		if(token.opcode == lbl_opcode)
 		{
-			add_label(csasm_line, token.data.operand);
+			add_label(params.line, token.data.operand);
 		}
 	}
 	// Runtime
-	csasm_line = 0;
-	for(csasm_line = 0; csasm_line < length; csasm_line++)
+	params.line = 0;
+	for(params.line = 0; params.line < length; params.line++)
 	{
-		tkn_t token = tokens[csasm_line];
-		CSASM_TKNS[token.opcode].def_func(token.data);
+		tkn_t token = tokens[params.line];
+		CSASM_TKNS[token.opcode].def_func(token.data, &params);
 	}
 	// Postprocessing
 	for(size_t i = 0; i < length; i++)

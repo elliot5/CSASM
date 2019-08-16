@@ -3,6 +3,16 @@
 #ifndef CSASM_H
 #define CSASM_H
 
+#define MEM_SIZE 255
+
+// Registers / Memory / Metadata
+typedef struct csparams
+{
+	unsigned long line;
+	long acc;
+	long memory[MEM_SIZE];
+} csparams_t;
+
 // Token Data
 typedef struct tknd
 {
@@ -15,7 +25,7 @@ typedef struct deftkn
 {
 	const unsigned int icode;
 	const char* scode;
-	int (*def_func)(tknd_t);
+	int (*def_func)(tknd_t, csparams_t*);
 } deftkn_t;
 
 // Token
@@ -47,14 +57,14 @@ typedef struct linedarr
 	long length;
 } linedarr_t;
 
-extern int csasm_add(tknd_t data);
-extern int csasm_out(tknd_t data);
-extern int csasm_mov(tknd_t data);
-extern int csasm_ldr(tknd_t data);
-extern int csasm_set(tknd_t data);
-extern int csasm_lbl(tknd_t data);
-extern int csasm_jmp(tknd_t data);
-extern int csasm_inp(tknd_t data);
+extern int csasm_add(tknd_t data, csparams_t* csp);
+extern int csasm_out(tknd_t data, csparams_t* csp);
+extern int csasm_mov(tknd_t data, csparams_t* csp);
+extern int csasm_ldr(tknd_t data, csparams_t* csp);
+extern int csasm_set(tknd_t data, csparams_t* csp);
+extern int csasm_lbl(tknd_t data, csparams_t* csp);
+extern int csasm_jmp(tknd_t data, csparams_t* csp);
+extern int csasm_inp(tknd_t data, csparams_t* csp);
 
 extern int cerr_print(void);
 
