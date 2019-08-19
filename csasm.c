@@ -1,11 +1,31 @@
+/*
+	MIT License
+
+	Copyright (c) 2019 Elliot K Bewey
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "csasm.h"
-
-#define GENERIC_ERR -1
-
-linedarr_t csasm_labels;
 
 int cerr_print()
 {
@@ -13,28 +33,29 @@ int cerr_print()
 	return 1;
 }
 
-int add_label(long line, char* label)
+int add_label(long line, char* label, linedarr_t* linearr)
 {
-	csasm_labels.lined = realloc(csasm_labels.lined, sizeof(lined_t) * csasm_labels.length + 1);
+	linearr->lined = realloc(linearr->lined, sizeof(lined_t) * linearr->length + 1);
 	lined_t ln_data = {
 		.label = label,
 		.line = line
 	};
-	csasm_labels.lined[csasm_labels.length] = ln_data;
-	csasm_labels.length += 1;
-	return 0;
+
+	linearr->lined[linearr->length] = ln_data;
+	linearr->length += 1;
+	return CSASM_SUCCESS;
 }
 
-int get_label(char* label)
+int get_label_line(char* label, linedarr_t* linearr)
 {
-	for(int i = 0; i < csasm_labels.length; i++)
+	for(int i = 0; i < linearr->length; i++)
 	{
-		if(strcmp(csasm_labels.lined[i].label, label) == 0)
+		if(strcmp(linearr->lined[i].label, label) == 0)
 		{
-			return csasm_labels.lined[i].line;
+			return linearr->lined[i].line;
 		}
 	}
-	return -1;
+	return ;
 }
 
 int csasm_add(tknd_t data, csparams_t* params)
@@ -43,7 +64,7 @@ int csasm_add(tknd_t data, csparams_t* params)
 	{
 		cerr_print();
 		fprintf(stderr, "ADD requires operand ADDR\n");
-		exit(GENERIC_ERR);
+		exit(CSASM_FAILURE);
 	}
 	long addr = strtol(data.operand, NULL, 0);
 	params->acc += params->memory[addr];
@@ -62,7 +83,7 @@ int csasm_mov(tknd_t data, csparams_t* params)
 	{
 		cerr_print();
 		fprintf(stderr, "MOV requires operand ADDR\n");
-		exit(GENERIC_ERR);
+		exit(CSASM_FAILURE);
 	}
 	long addr = strtol(data.operand, NULL, 0);
 	params->memory[addr] = params->acc;
@@ -75,7 +96,7 @@ int csasm_ldr(tknd_t data, csparams_t* params)
 	{
 		cerr_print();
 		fprintf(stderr, "LDR requires operand ADDR\n");
-		exit(GENERIC_ERR);
+		exit(CSASM_FAILURE);
 	}
 	long addr = strtol(data.operand, NULL, 0); // 0 = hex
 	params->acc = params->memory[addr];
@@ -88,7 +109,7 @@ int csasm_set(tknd_t data, csparams_t* params)
 	{
 		cerr_print();
 		fprintf(stderr, "SET requires operand VAL\n");
-		exit(GENERIC_ERR);
+		exit(CSASM_FAILURE);
 	}
 	long val = strtol(data.operand, NULL, 10); // 10 for base ten
 	params->acc= val;
@@ -106,14 +127,14 @@ int csasm_jmp(tknd_t data, csparams_t* params)
 	{
 		cerr_print();
 		fprintf(stderr, "JMP requires operand LABEL\n");
-		exit(GENERIC_ERR);
+		exit(CSASM_FAILURE);
 	}
-	int ret = get_label(data.operand);
+	int ret = get_label_line(data.operand, &params->lined);
 	if(ret < 0)
 	{
 		cerr_print();
 		fprintf(stderr, "Failed to JMP to label %s (does it exist?)\n", data.operand);
-		exit(GENERIC_ERR);
+		exit(CSASM_FAILURE);
 	}
 	params->line = ret;
 }
@@ -154,7 +175,7 @@ char* open_file(const char* dir)
 		if(buffer == NULL)
 		{
 			perror("Failed to malloc file buffer");
-			exit(-1);
+			exit(EXIT_FAILURE);
 		}
 		fread(buffer, 1, length, file_ptr);
 		fclose(file_ptr);
@@ -187,13 +208,13 @@ tkn_t tokenize(char* str)
 	if(opcode == NULL)
 	{
 		perror("Tokenize opcode fail");
-		exit(-1);
+		exit(CSASM_FAILURE);
 	}
 	int i_opcode = str_opcode(opcode);
 	if(i_opcode < 0)
 	{
 		perror("Unknown opcode");
-		exit(-2);
+		exit(CSASM_FAILURE);
 	}
 	char* operand = strtok_r(NULL, " ", &str);
 
@@ -232,7 +253,7 @@ tknarr_t tokenize_lines(char* str)
 		if(buffer == NULL)
 		{
 			perror("Failed to malloc tkn buffer");
-			exit(-1);
+			exit(CSASM_FAILURE);
 		}
 		buffer[length-1] = '\0';
 		snprintf(buffer, length, "%s", tok_ptr);
@@ -249,11 +270,25 @@ tknarr_t tokenize_lines(char* str)
 	return tokens;
 }
 
-int process_tokens(tknarr_t token_array, csparams_t* params)
+csparams_t gen_params()
 {
+	linedarr_t lined_arr = {
+		.length = 0,
+		.lined = NULL
+	};
+	csparams_t new_params = {
+		.lined = lined_arr,
+		.line = 0
+	};
+	return new_params;
+}
+
+int process_tokens(tknarr_t tokenarr, csparams_t* params)
+{
+
 	int lbl_opcode = str_opcode("lbl");
-	tkn_t* tokens = token_array.tokens;
-	size_t length = token_array.length;
+	tkn_t* tokens = tokenarr.tokens;
+	size_t length = tokenarr.length;
 
 	// Preprocessing
 	for(params->line = 0; params->line < length; params->line++)
@@ -261,7 +296,7 @@ int process_tokens(tknarr_t token_array, csparams_t* params)
 		tkn_t token = tokens[params->line];
 		if(token.opcode == lbl_opcode)
 		{
-			add_label(params->line, token.data.operand);
+			add_label(params->line, token.data.operand, &params->lined);
 		}
 	}
 	// Runtime
@@ -276,8 +311,9 @@ int process_tokens(tknarr_t token_array, csparams_t* params)
 	{
 		free(tokens[i].data.src);
 	}
+	
 	free(tokens);
-	free(csasm_labels.lined);
+	free(params->lined.lined);
 }
 
 int main(int argc, char** argv)
@@ -285,19 +321,20 @@ int main(int argc, char** argv)
 	if(argc < 2)
 	{
 		fprintf(stderr, "Program requires file directory input\n");
-		return (-5);
+		return (CSASM_FAILURE);
 	}
 	char* directory = argv[1];
 	char* file_contents = open_file(directory);
 	if(file_contents == NULL)
 	{
 		fprintf(stderr, "Failed to read directory %s (does the file exist?)\n", directory);
-		return (-4);
+		return (CSASM_FAILURE);
 	}
 	
 	tknarr_t token_array = tokenize_lines(file_contents);
-	csparams_t params;
+	csparams_t params = gen_params();
 	process_tokens(token_array, &params);
 	free(file_contents);
-	return 0;
+
+	return CSASM_SUCCESS;
 }
