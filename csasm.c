@@ -30,17 +30,24 @@
 int cerr_print()
 {
 	fprintf(stderr, "[asm_err] ");
-	return 1;
+	return CSASM_SUCCESS;
 }
 
 int add_label(long line, char* label, linedarr_t* linearr)
 {
-	linearr->lined = realloc(linearr->lined, sizeof(lined_t) * linearr->length + 1);
+	indexnum_t length = linearr->length;
+	lined_t* lined = linearr->lined;
+	lined = malloc(sizeof(lined_t) * length + 1);
+	if(lined == NULL)
+	{
+		cerr_print();
+		fprintf(stderr, "Failed to alloc label space\n");
+		return CSASM_FAILURE;
+	}
 	lined_t ln_data = {
 		.label = label,
 		.line = line
 	};
-
 	linearr->lined[linearr->length] = ln_data;
 	linearr->length += 1;
 	return CSASM_SUCCESS;
@@ -55,10 +62,10 @@ int get_label_line(char* label, linedarr_t* linearr)
 			return linearr->lined[i].line;
 		}
 	}
-	return ;
+	return -1;
 }
 
-int csasm_add(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_add(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -68,16 +75,20 @@ int csasm_add(tknd_t data, csparams_t* params)
 	}
 	long addr = strtol(data.operand, NULL, 0);
 	params->acc += params->memory[addr];
-	return 0;
+	return CSASM_SUCCESS;
 }
 
-int csasm_out(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_out(tknd_t data, csparams_t* params)
 {
-	printf("[asm_out] %ld\n", params->acc);
-	return 0;
+	#ifdef CSASM_DLONG_NUMBERS
+		printf("[asm_out] %lld\n", params->acc);
+	#else
+		printf("[asm_out] %ld\n", params->acc);
+	#endif
+	return CSASM_SUCCESS;
 }
 
-int csasm_mov(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_mov(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -87,10 +98,10 @@ int csasm_mov(tknd_t data, csparams_t* params)
 	}
 	long addr = strtol(data.operand, NULL, 0);
 	params->memory[addr] = params->acc;
-	return 0;
+	return CSASM_SUCCESS;
 }
 
-int csasm_ldr(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_ldr(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -100,10 +111,10 @@ int csasm_ldr(tknd_t data, csparams_t* params)
 	}
 	long addr = strtol(data.operand, NULL, 0); // 0 = hex
 	params->acc = params->memory[addr];
-	return 0;
+	return CSASM_SUCCESS;
 }
 
-int csasm_set(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_set(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -113,15 +124,15 @@ int csasm_set(tknd_t data, csparams_t* params)
 	}
 	long val = strtol(data.operand, NULL, 10); // 10 for base ten
 	params->acc= val;
-	return 0;
+	return CSASM_SUCCESS;
 }
 
-int csasm_lbl(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_lbl(tknd_t data, csparams_t* params)
 {
-	
+	return CSASM_SUCCESS;
 }
 
-int csasm_jmp(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_jmp(tknd_t data, csparams_t* params)
 {
 	if(data.operand == NULL)
 	{
@@ -137,33 +148,27 @@ int csasm_jmp(tknd_t data, csparams_t* params)
 		exit(CSASM_FAILURE);
 	}
 	params->line = ret;
+	return CSASM_SUCCESS;
 }
 
-int csasm_inp(tknd_t data, csparams_t* params)
+CS_RETCODE_T csasm_inp(tknd_t data, csparams_t* params)
 {
 	long val = 0;
 	scanf("%ld", &val);
 	params->acc = val;
+	return CSASM_SUCCESS;
 }
 
-const deftkn_t CSASM_TKNS[] = {
-	{0x0, "add", csasm_add},
-	{0x1, "out", csasm_out},
-	{0x2, "mov", csasm_mov},
-	{0x3, "set", csasm_set},
-	{0x4, "ldr", csasm_ldr},
-	{0x5, "lbl", csasm_lbl},
-	{0x6, "jmp", csasm_jmp},
-	{0x7, "inp", csasm_inp}
-};
-
-const int TKNS_LEN = sizeof(CSASM_TKNS) / sizeof(CSASM_TKNS[0]);
+CS_RETCODE_T csasm_empty(tknd_t data, csparams_t* params)
+{
+	return CSASM_SUCCESS;
+}
 
 char* open_file(const char* dir)
 {
 	const char* mode = "r";
 	FILE * file_ptr;
-	char* buffer;
+	char* buffer = NULL;
 	long length;
 	file_ptr = fopen(dir, mode);
 	if(file_ptr)
@@ -179,16 +184,16 @@ char* open_file(const char* dir)
 		}
 		fread(buffer, 1, length, file_ptr);
 		fclose(file_ptr);
+		buffer[length-1] = '\0';
 	}
-	buffer[length-1] = '\0';
 	return buffer;
 }
 
-int str_opcode(const char* str)
+int str_opcode(const char* str, const deftkn_t* tokens, const size_t length)
 {
-	for(int i = 0; i < TKNS_LEN; i++)
+	for(size_t i = 0; i < length; i++)
 	{
-		deftkn_t curr_tkn = CSASM_TKNS[i];
+		deftkn_t curr_tkn = tokens[i];
 		if(strcmp(curr_tkn.scode, str) == 0)
 		{
 			return curr_tkn.icode;
@@ -202,19 +207,19 @@ void print_token(const tkn_t token)
 	printf("%u : %s\r\n", token.opcode, token.data.operand);
 }
 
-tkn_t tokenize(char* str)
+CS_RETCODE_T tokenize(char* str, const deftkn_t* deftkns, const size_t deftkns_length, tkn_t* out)
 {
 	char* opcode = strtok_r(str, " ", &str);
 	if(opcode == NULL)
 	{
-		perror("Tokenize opcode fail");
-		exit(CSASM_FAILURE);
+		cerr_print();
+		fprintf(stderr, "Tokenize opcode fail\n");
+		return CERR_TOKENIZE_OPCODE_FAIL;
 	}
-	int i_opcode = str_opcode(opcode);
+	int i_opcode = str_opcode(opcode, deftkns, deftkns_length);
 	if(i_opcode < 0)
 	{
-		perror("Unknown opcode");
-		exit(CSASM_FAILURE);
+		return CERR_UNKNOWN_OPCODE;
 	}
 	char* operand = strtok_r(NULL, " ", &str);
 
@@ -227,54 +232,70 @@ tkn_t tokenize(char* str)
 		.data = token_data
 	};
 
-	return token;
+	*out = token;
+
+	return CSASM_SUCCESS;
 }
 
-tknarr_t tokenize_lines(char* str)
+CS_RETCODE_T tokenize_lines(char* str, const deftkn_t* deftkns,
+	const size_t deftkns_length, size_t* tkn_length, tkn_t** out)
 {
 	long buffered_length = 16;
 	long index = 0;
 	char* tok_ptr = NULL;
 	tok_ptr = strtok_r(str, "\n", &str);
-	tknarr_t tokens = {
-	       .tokens = malloc(sizeof(tkn_t) * buffered_length),
-	       .buffered_length = buffered_length
-	};
+
+	tkn_t* tokens = malloc(sizeof(tkn_t) * buffered_length);
+
 	while(tok_ptr != NULL)
 	{
 		if(index >= buffered_length)
 		{
 			buffered_length = buffered_length * 2;
-			tokens.tokens = realloc(tokens.tokens, sizeof(tkn_t) * buffered_length);
-			tokens.buffered_length = buffered_length;
+			tokens = realloc(tokens, sizeof(tkn_t) * buffered_length);
+			buffered_length = buffered_length;
 		}
+		
 		long length = strlen(tok_ptr) + 1;
 		char* buffer = malloc(length);
 		if(buffer == NULL)
 		{
 			perror("Failed to malloc tkn buffer");
-			exit(CSASM_FAILURE);
+			return CERR_TKN_MALLOC_FAIL;
 		}
 		buffer[length-1] = '\0';
 		snprintf(buffer, length, "%s", tok_ptr);
-		
-		tkn_t token = tokenize(buffer);
-		tokens.tokens[index] = token;
-		tokens.length = index + 1;
-		tokens.tokens[index].data.src = buffer;	
 
+		tkn_t token;
+		int token_status = tokenize(buffer, deftkns, deftkns_length, &token);
+		if(token_status != 0)
+		{
+			if(token_status == CERR_UNKNOWN_OPCODE)
+			{
+				cerr_print();
+				fprintf(stderr, "Unknown opcode \"%s\" on line %lu\n", buffer, index);
+			}
+			return token_status;
+		}
+		tokens[index] = token;
+		buffered_length = index + 1;
+		tokens[index].data.src = buffer;	
 		tok_ptr = strtok_r(NULL, "\n", &str);
 
 		index = index + 1;
+		*tkn_length = index;
 	}
-	return tokens;
+
+	*out = tokens;
+
+	return CSASM_SUCCESS;
 }
 
 csparams_t gen_params()
 {
 	linedarr_t lined_arr = {
 		.length = 0,
-		.lined = NULL
+		.lined = malloc(sizeof(lined_t))
 	};
 	csparams_t new_params = {
 		.lined = lined_arr,
@@ -283,37 +304,54 @@ csparams_t gen_params()
 	return new_params;
 }
 
-int process_tokens(tknarr_t tokenarr, csparams_t* params)
+CS_RETCODE_T free_tokens(tkn_t* tkns, const size_t tkns_length)
 {
+	for(size_t i = 0; i < tkns_length; i++)
+	{
+		free(tkns[i].data.src);
+	}
+	free(tkns);
+	return CSASM_SUCCESS;
+}
 
-	int lbl_opcode = str_opcode("lbl");
-	tkn_t* tokens = tokenarr.tokens;
-	size_t length = tokenarr.length;
+CS_RETCODE_T process_tokens(csparams_t* params, const tkn_t* tkns, const size_t tkns_length,
+	const deftkn_t* deftkns, const size_t deftkns_length)
+{
+	// Temporary
+	int lbl_opcode = str_opcode("lbl", deftkns, deftkns_length);
 
 	// Preprocessing
-	for(params->line = 0; params->line < length; params->line++)
+	for(params->line = 0; params->line < tkns_length; params->line++)
 	{
-		tkn_t token = tokens[params->line];
+		tkn_t token = tkns[params->line];
 		if(token.opcode == lbl_opcode)
 		{
-			add_label(params->line, token.data.operand, &params->lined);
+			int astatus = add_label(params->line, token.data.operand, &params->lined);
+			if(astatus != 0)
+			{
+				return astatus;
+			}
 		}
 	}
+
 	// Runtime
 	params->line = 0;
-	for(params->line = 0; params->line < length; params->line++)
+	for(params->line = 0; params->line < tkns_length; params->line++)
 	{
-		tkn_t token = tokens[params->line];
-		CSASM_TKNS[token.opcode].def_func(token.data, params);
+		tkn_t token = tkns[params->line];
+		deftkns[token.opcode].def_func(token.data, params);
 	}
-	// Postprocessing
-	for(size_t i = 0; i < length; i++)
-	{
-		free(tokens[i].data.src);
-	}
-	
-	free(tokens);
 	free(params->lined.lined);
+}
+
+CS_RETCODE_T exit_status(const CS_RETCODE_T status) {
+	if(status == 0)
+	{
+		printf("Program exited OK (%d)\n\r", status);
+	} else {
+		printf("Program exited with error code (%d)\n\r", status);
+	}
+	return status;
 }
 
 int main(int argc, char** argv)
@@ -321,20 +359,50 @@ int main(int argc, char** argv)
 	if(argc < 2)
 	{
 		fprintf(stderr, "Program requires file directory input\n");
-		return (CSASM_FAILURE);
+		return exit_status(CERR_INVALID_ARGS);
 	}
+
 	char* directory = argv[1];
 	char* file_contents = open_file(directory);
+
 	if(file_contents == NULL)
 	{
 		fprintf(stderr, "Failed to read directory %s (does the file exist?)\n", directory);
-		return (CSASM_FAILURE);
+		free(file_contents);
+		return exit_status(CERR_DIR_READ_FAIL);
 	}
-	
-	tknarr_t token_array = tokenize_lines(file_contents);
-	csparams_t params = gen_params();
-	process_tokens(token_array, &params);
-	free(file_contents);
 
-	return CSASM_SUCCESS;
+	const deftkn_t csasm_tkns[] = {
+		{0x0, "add", csasm_add},
+		{0x1, "out", csasm_out},
+		{0x2, "mov", csasm_mov},
+		{0x3, "set", csasm_set},
+		{0x4, "ldr", csasm_ldr},
+		{0x5, "lbl", csasm_empty},
+		{0x6, "jmp", csasm_jmp},
+		{0x7, "inp", csasm_inp}
+	};
+	const int csasm_tkns_length = sizeof(csasm_tkns) / sizeof(csasm_tkns[0]);
+	
+	size_t tknarr_length = -1;
+	tkn_t* tknarr;
+	int tstatus = tokenize_lines(file_contents, csasm_tkns, csasm_tkns_length, &tknarr_length, &tknarr);
+	if(tstatus != 0)
+	{
+		return exit_status(tstatus);
+	}
+	if(tknarr_length >= 0)
+	{
+		csparams_t params = gen_params();
+		int pstatus = process_tokens(&params, tknarr, tknarr_length, csasm_tkns, csasm_tkns_length);
+		free_tokens(tknarr, tknarr_length);
+		free(file_contents);
+		return exit_status(pstatus);
+	} else {
+		fprintf(stderr, "Tokenization failed: returned value less than 0");	
+		free_tokens(tknarr, tknarr_length);
+		free(file_contents);
+		return exit_status(CSASM_FAILURE);
+	}
+	return exit_status(CSASM_SUCCESS);
 }

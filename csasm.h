@@ -28,20 +28,15 @@
  *  @author Elliot Bewey (elliot5)
  */
 
+
 #ifndef CSASM_H
 #define CSASM_H
+
+#include "csretcode.h"
 
 #ifndef CSASM_MEM_SIZE
 	/** @brief The allocated size to the csasm memory object */
 	#define CSASM_MEM_SIZE 255
-#endif
-
-#ifdef CSASM_OVERRIDE_DERRNO
-	#define CSASM_FAILURE 1
-	#define CSASM_SUCCESS 0
-#else
-	#define CSASM_FAILURE EXIT_FAILURE
-	#define CSASM_SUCCESS EXIT_SUCCESS
 #endif
 
 /** @brief When defined, the values used in CSASM will be of type 'long long' instead of 'long' */
@@ -104,7 +99,7 @@ typedef struct deftkn
 {
 	const unsigned int icode;
 	const char* scode;
-	int (*def_func)(tknd_t, csparams_t*);
+	CS_RETCODE_T (*def_func)(tknd_t, csparams_t*);
 } deftkn_t;
 
 /**
@@ -116,24 +111,14 @@ typedef struct tkn
 	tknd_t data;
 } tkn_t;
 
-/**
- * \brief Token array struct storing length and token pointer
- */
-typedef struct tknarr
-{
-	tkn_t* tokens;
-	long length;
-	long buffered_length;
-} tknarr_t;
-
-extern int csasm_add(tknd_t data, csparams_t* params);
-extern int csasm_out(tknd_t data, csparams_t* params);
-extern int csasm_mov(tknd_t data, csparams_t* params);
-extern int csasm_ldr(tknd_t data, csparams_t* params);
-extern int csasm_set(tknd_t data, csparams_t* params);
-extern int csasm_lbl(tknd_t data, csparams_t* params);
-extern int csasm_jmp(tknd_t data, csparams_t* params);
-extern int csasm_inp(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_add(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_out(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_mov(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_ldr(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_set(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_jmp(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_inp(tknd_t data, csparams_t* params);
+extern CS_RETCODE_T csasm_empty(tknd_t data, csparams_t* params);
 
 extern csparams_t gen_params();
 extern int cerr_print(void);
@@ -160,7 +145,7 @@ extern char* open_file(const char* dir);
  * 
  * \returns The integer representation of the opcode
  */
-extern int str_opcode(const char* str);
+extern int str_opcode(const char* str, const deftkn_t* tokens, const size_t length);
 
 /**
  * \brief Returns the opcode value from given string
@@ -172,14 +157,21 @@ extern int str_opcode(const char* str);
  * 
  * \returns The integer representation of the opcode
  */
+
+
 extern void print_token(const tkn_t token);
 
+extern CS_RETCODE_T free_tokens(tkn_t* tkns, const size_t tkns_length);
 
-extern tkn_t tokenize(char* str);
+extern CS_RETCODE_T tokenize(char* str, const deftkn_t* deftkns,
+	const size_t deftkns_length, tkn_t* out);
 
-extern tknarr_t tokenize_lines(char* str);
+extern CS_RETCODE_T tokenize_lines(char* str, const deftkn_t* deftkns,
+	const size_t deftkns_length, size_t* tkn_length, tkn_t** out);
 
+extern CS_RETCODE_T process_tokens(csparams_t* params, const tkn_t* tkns, const size_t tkns_length,
+	const deftkn_t* deftkns, const size_t deftkns_length);
 
-extern int process_tokens(tknarr_t arr, csparams_t* params);
+extern CS_RETCODE_T exit_status(const CS_RETCODE_T status);
 
 #endif
