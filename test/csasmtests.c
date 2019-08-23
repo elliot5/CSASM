@@ -74,7 +74,7 @@ void test_csasm_mov(void ** state)
     assert_int_equal(params.memory[250], 254);
 }
 
-void test_csasm_program_add()
+void test_csasm_program_add(void ** state)
 {
     size_t tknarr_length = -1;
 	tkn_t* tknarr;

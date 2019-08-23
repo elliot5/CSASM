@@ -29,4 +29,4 @@ SOFTWARE.
 
 extern void test_csasm_add(void ** state);
 extern void test_csasm_mov(void ** state);
-extern void test_csasm_program_add();
+extern void test_csasm_program_add(void ** state);

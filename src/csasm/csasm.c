@@ -27,13 +27,13 @@ SOFTWARE.
 #include <string.h>
 #include "csasm/csasm.h"
 
-CS_RETCODE_T cerr_print()
+CS_RETCODE_T cerr_print(void)
 {
 	fprintf(stderr, "[asm_err] ");
 	return CSASM_SUCCESS;
 }
 
-int add_label(long line, char* label, linedarr_t* linearr)
+int add_label(const indexnum_t line, char* label, linedarr_t* linearr)
 {
 	indexnum_t length = linearr->length;
 	lined_t* lined = linearr->lined;
@@ -53,7 +53,7 @@ int add_label(long line, char* label, linedarr_t* linearr)
 	return CSASM_SUCCESS;
 }
 
-indexnum_t get_label_line(char* label, linedarr_t* linearr)
+indexnum_t get_label_line(const char* label, const linedarr_t* linearr)
 {
 	for(indexnum_t i = 0; i < linearr->length; i++)
 	{
@@ -291,7 +291,7 @@ CS_RETCODE_T tokenize_lines(char* str, const deftkn_t* deftkns,
 	return CSASM_SUCCESS;
 }
 
-csparams_t gen_params()
+csparams_t gen_params(void)
 {
 	linedarr_t lined_arr = {
 		.length = 0,

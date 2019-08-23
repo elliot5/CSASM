@@ -118,11 +118,29 @@ extern CS_RETCODE_T csasm_jmp(tknd_t data, csparams_t* params);
 extern CS_RETCODE_T csasm_inp(tknd_t data, csparams_t* params);
 extern CS_RETCODE_T csasm_empty(tknd_t data, csparams_t* params);
 
-extern csparams_t gen_params();
+extern csparams_t gen_params(void);
 extern CS_RETCODE_T cerr_print(void);
 
-extern int add_label(long line, char* label, linedarr_t* linearr);
-extern indexnum_t get_label_line(char* label, linedarr_t* linearr);
+/**
+ * \brief Constructs and appends a new line data object to the given line array
+ * 
+ * @param line The line the new label exists on
+ * @param label The name of the label
+ * @param linearr The reference line data array to append to
+ * 
+ * \returns CSASM_SUCCESS on successfull allocation, CSASM_FAILURE on fail
+ */
+extern int add_label(const indexnum_t line, char* label, linedarr_t* linearr);
+
+/**
+ * \brief Returns the line a label exists on from the given line array
+ * 
+ * @param label The reference label to search for
+ * @param linearr The line array to reference
+ * 
+ * \returns The line the reference label exists on
+ */
+extern indexnum_t get_label_line(const char* label, const linedarr_t* linearr);
 
 /**
  * \brief Reads the contents of a file into a char*
@@ -146,10 +164,38 @@ extern char* open_file(const char* dir);
  */
 extern int str_opcode(const char* str, const deftkn_t* tokens, const size_t length);
 
+/**
+ * \brief Prints opcode and operand (data) of the given token
+ * 
+ * @param token The token to be printed
+ */
 extern void print_token(const tkn_t token);
 
+/**
+ * \brief Frees / disposes the given tokens
+ * 
+ * @param tkns A pointer to the token(s) to be freed
+ * @param tkns_length The number of tokens to be freed
+ * 
+ * \returns CSASM_SUCCESS after successfully freeing tokens
+ */
 extern CS_RETCODE_T free_tokens(tkn_t* tkns, const size_t tkns_length);
 
+/**
+ * \brief Transforms the given char* into a tkn_t (token) object
+ * 
+ * This function allows a string representation of a token to be given
+ * e.g "mov 0x2" and for it to be constructed into a tkn_t object. An
+ * array of deftkns must be given to the function. The default definition
+ * for tokens called 'CSASM_TKNS' can be used in csasmtkns.h.
+ * 
+ * @param str The string representation of the token
+ * @param deftkns An array of definition tokens
+ * @param deftkns_length The number of definition tokens
+ * @param out A pointer to a tkn_t to output the result to
+ * 
+ * \returns CERR_TOKENIZE_OPCODE_FAIL, CERR_UNKNOWN_OPCODE, CSASM_SUCCESSS
+ */
 extern CS_RETCODE_T tokenize(char* str, const deftkn_t* deftkns,
 	const size_t deftkns_length, tkn_t* out);
 
