@@ -1,33 +1,33 @@
 /*
-	MIT License
+MIT License
 
-	Copyright (c) 2019 Elliot K Bewey
+Copyright (c) 2019 Elliot K Bewey
 
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "csasm.h"
+#include "csasm/csasm.h"
 
-int cerr_print()
+CS_RETCODE_T cerr_print()
 {
 	fprintf(stderr, "[asm_err] ");
 	return CSASM_SUCCESS;
@@ -53,9 +53,9 @@ int add_label(long line, char* label, linedarr_t* linearr)
 	return CSASM_SUCCESS;
 }
 
-int get_label_line(char* label, linedarr_t* linearr)
+indexnum_t get_label_line(char* label, linedarr_t* linearr)
 {
-	for(int i = 0; i < linearr->length; i++)
+	for(indexnum_t i = 0; i < linearr->length; i++)
 	{
 		if(strcmp(linearr->lined[i].label, label) == 0)
 		{
@@ -267,7 +267,7 @@ CS_RETCODE_T tokenize_lines(char* str, const deftkn_t* deftkns,
 		snprintf(buffer, length, "%s", tok_ptr);
 
 		tkn_t token;
-		int token_status = tokenize(buffer, deftkns, deftkns_length, &token);
+		CS_RETCODE_T token_status = tokenize(buffer, deftkns, deftkns_length, &token);
 		if(token_status != 0)
 		{
 			if(token_status == CERR_UNKNOWN_OPCODE)
