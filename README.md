@@ -33,4 +33,4 @@ CSASM uses the MIT License.
 
 ## Authors
 
-(2019), Elliot Bewey
+(2019), Elliot
